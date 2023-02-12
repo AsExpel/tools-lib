@@ -1,0 +1,62 @@
+// base color
+$blue:#324157;
+$light-blue:#3A71A8;
+$red:#C03639;
+$pink: #E65D6E;
+$green: #30B08F;
+$tiffany: #4AB7BD;
+$yellow:#FEC171;
+$panGreen: #30B08F;
+$backgroundColor: #f2f2f2;
+$borderColor: #dddddd;
+$tipColor: #999999;
+
+// sidebar
+$menuText:#bfcbd9;
+$menuActiveText:#409EFF;
+$subMenuActiveText:#f4f4f5; // https://github.com/ElemeFE/element/issues/12951
+
+$menuBg:#304156;
+$menuHover:#263445;
+
+$subMenuBg:#1f2d3d;
+$subMenuHover:#001528;
+
+$sideBarWidth: 210px;
+
+// 尺寸自定义(val 值, unit 步进单位)
+@function customSize($val, $unit) {
+  @return $val * $unit;
+}
+// span
+$spanUnit: 2px;
+$spanMid: 10;
+@function customSpan($val) {
+  @return customSize($val, $spanUnit);
+}
+$span7S: customSpan($spanMid - 9); // 2
+$span6S: customSpan($spanMid - 8); // 4
+$span5S: customSpan($spanMid - 6); // 8
+$span4S: customSpan($spanMid - 5); // 10
+$span3S: customSpan($spanMid - 4); // 12
+$spanXXS: customSpan($spanMid - 3); // 14
+$spanXS: customSpan($spanMid - 2); // 16
+$spanS: customSpan($spanMid - 1); // 18
+$spanM: customSpan($spanMid); // 20
+$spanL: customSpan($spanMid + 1);
+$spanXL: customSpan($spanMid + 2);
+$spanXXL: customSpan($spanMid + 3);
+
+// font size
+$fontSizeUnit: 2px;
+$fontSizeMid: 7;
+@function customFontSize($val) {
+  @return customSize($val, $fontSizeUnit);
+}
+$fontS: customFontSize($fontSizeMid - 1);   // 12px
+$fontM: customFontSize($fontSizeMid);       // 14px
+$fontL: customFontSize($fontSizeMid + 1);   // 16px
+$fontXL: customFontSize($fontSizeMid + 2);  // 18px
+$fontXXL: customFontSize($fontSizeMid + 3); // 20px
+
+
