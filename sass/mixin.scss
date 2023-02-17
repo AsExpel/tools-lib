@@ -117,3 +117,23 @@
   height: $size;
   width: $size;
 }
+
+// 样式实现按钮节流
+@mixin fnThrottle($delay: 500ms, $debug: false) {
+  animation: throttle $delay step-end forwards;
+  &:active{
+    animation: none;
+  }
+  @keyframes throttle {
+    from {
+      pointer-events: none;
+      @if $debug == true {
+        background: orangered;
+      }
+    }
+    to {
+      pointer-events: all;
+    }
+  }
+}
+
