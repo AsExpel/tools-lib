@@ -151,8 +151,19 @@ export default {
 
     checkFile(file) {
       const usingFile = file.raw ?? file
-      const {size:fileSize = 0} = usingFile || {}
+      const {size:fileSize = 0, type = '', name = ''} = usingFile || {}
       let result = true;
+      // 依据accept属性，判断是否符合文件类型
+      if (result && this.accept) {
+        const acceptArr = this.accept.split(',');
+        const acceptType = acceptArr.find(item => type.indexOf(item) >= 0 || name.endsWith(item))
+        if (!acceptType) {
+          this.$message.error('上传格式不正确!');
+          // console.warn('acceptType does not match', acceptType, acceptArr);
+          result = false
+        }
+      }
+      // 判断文件大小是否合规
       if (result && this.sizeLimit) {
         const overSize = fileSize / 1024 / 1024 > this.sizeLimit;
         if (overSize) {
@@ -252,6 +263,7 @@ export default {
 <style lang="scss" scoped>
 .component-limit-image-card-upload {
   $imgSize: var(--image-size, 190px);
+  transition: box-shadow 0.3s;
   .limit-image-card-upload {
     &.is-single-list {
       width: $imgSize;
@@ -278,6 +290,23 @@ export default {
         width: 100%;
         height: 100%;
         @include fnCenter();
+      }
+    }
+  }
+
+  .warning & {
+    box-shadow: 0 0 2px #ff9001;
+    ::v-deep {
+      .el-upload--picture-card {
+        border-color: $yellow;
+      }
+    }
+  }
+  .error & {
+    box-shadow: 0 0 2px #9a0106;
+    ::v-deep {
+      .el-upload--picture-card {
+        border-color: $red;
       }
     }
   }
