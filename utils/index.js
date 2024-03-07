@@ -372,3 +372,42 @@ export function randomNumber({min = 0, max = 1, allowBoundary = false }) {
     max = Math.floor(max);
   return Math.floor(Math.random() * (max - min + (allowBoundary ? 1 : 0))) + min;
 }
+
+/**
+ * 比较两个对象，如果它们相等则返回true，否则返回false。
+ *
+ * @param {Object} baseObj - 要比较的基本对象
+ * @param {Object} compareObj - 要与基本对象进行比较的对象
+ * @param showLog {Boolean = false} 是否打印日志
+ * @return {boolean} 如果对象相等则返回true，否则返回false
+ */
+export function objectCompare(baseObj = {}, compareObj = {}, showLog = false) {
+  if (Object.keys(baseObj).length !== Object.keys(compareObj).length) {
+    return false;
+  }
+  for (const [key, value] of Object.entries(baseObj)) {
+    const typeValue = typeof value;
+    const typeCompareValue = typeof compareObj[key];
+    const compareValue = compareObj[key];
+    showLog && console.log('_updateChecker', {key, value, result: compareValue === value, backup: compareValue});
+    if (typeValue !== typeCompareValue) {
+      return false;
+    }
+    if (typeValue === 'object') {
+      if (!value !== !compareValue) {
+        // {} / [] or null
+        return false;
+      }
+      if ((value instanceof Date) && (compareValue instanceof Date)) {
+        if (value.getTime() !== compareValue.getTime()) {
+          return false;
+        }
+      } else if (!objectCompare(value, compareValue, showLog)) {
+        return false;
+      }
+    } else if (value !== compareValue) {
+      return false;
+    }
+  }
+  return true;
+}
