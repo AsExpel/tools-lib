@@ -1,5 +1,5 @@
 <template>
-  <div class="component-table-page" :style="styleConfig">
+  <div class="component-table-page" :style="styleConfig" :ref="`${tableRowKey}Root`">
     <el-card v-if="filterCard && !asideFilterCard"
              :shadow="styleConfig.useCardShadow || 'always'"
              :class="{'filter-card':true, 'header-filter-card': true, 'short-card': shortFilterCard}"
@@ -53,11 +53,17 @@
                       @cell-dblclick="tableCellDBClick" stripe
                       @select-all="handleSelectAll"
                       @select="handleSelect"
-            >
+                      row-key="id"
+                      border
+                      default-expand-all
+                      :tree-props="{children: 'children', hasChildren: 'hasChildren'}">
+              >
               <template v-for="(rowItem, rowIdx) in tableRowsConfig">
+
+
                 <el-table-column v-if="!rowItem.rowSlotKey" v-bind="rowItem" :key="'slot'+tableRowKey+rowIdx">
                 </el-table-column>
-                <el-table-column v-else v-bind="rowItem" :key="tableRowKey+rowIdx">
+                <el-table-column v-else v-bind="rowItem" :key="'slot'+tableRowKey+rowIdx">
                   <template slot-scope="scope">
                     <!--        动态绑定插槽            -->
                     <slot :name="rowItem.rowSlotKey" v-bind="scope"></slot>
@@ -76,13 +82,13 @@
               </template>
             </el-table>
             <pagination
-                v-if="!disablePagination"
-                v-show="total>0"
-                :page.sync="listQuery.pageNum"
-                :limit.sync="listQuery.pageSize"
-                :page-sizes="pageSizeList"
-                :total="total" :auto-scroll="false"
-                @pagination="currentChangeFn"
+              v-if="!disablePagination"
+              v-show="total>0"
+              :page.sync="listQuery.pageNum"
+              :limit.sync="listQuery.pageSize"
+              :page-sizes="pageSizeList"
+              :total="total" :auto-scroll="false"
+              @pagination="currentChangeFn"
             />
           </el-card>
         </el-col>
@@ -93,7 +99,8 @@
 
 <script>
 import Pagination from '@/components/Pagination';
-import {debounceTool} from "@/utils";
+import {debounceTool, randomString} from "@/utils";
+import _ from "lodash";
 let mapIdx = 1;
 /**
  * 表单页福音！现在统统可配置辣！
@@ -181,9 +188,18 @@ export default {
         // useCardShadow: 'never',
       })
     },
+    // 筛选条件
+    // <br/>有传入且在切换分页时会比较本地存储的筛选条件是否一致，不一致则重新分页
+    // 使用时请务必保证filterData包含除分页外的全部筛选参数
+    // <br/>（如{...this.formData, deptId: this.deptId}需要将其中`formData`重新赋值deptId，而不是解构组合传入）
+    // <br/> <span style="color:red">!!!否则会导致分页参数丢失bug!!!</span>
+    filterData: {
+      type: Object,
+      default: null,
+    },
     // request调用的函数名
     queryFunc: {
-      type: String,
+      type: [String, Function],
       required: true,
       default: 'test'
     },
@@ -216,7 +232,7 @@ export default {
       type: Array,
       default: () => []
     },
-    useShortFilter: {type: Boolean, default: false}
+    useShortFilter: {type: Boolean, default: false},
   },
   data() {
     return {
@@ -239,10 +255,12 @@ export default {
     }
   },
   computed: {
+    isQueryFuncString() {
+      return typeof this.queryFunc === 'string'
+    },
     // 动态给列赋值，避免更新列时渲染错误
     tableRowKey() {
-      const {length = 0} = this.tableRowsConfig;
-      return 'row' + length
+      return (this.isQueryFuncString ? this.queryFunc : false) || randomString(5);
     }
   },
   created() {
@@ -260,6 +278,33 @@ export default {
     },
   },
   methods: {
+    /**
+     * 根据清理范围重置组件的特定数据。
+     * @param {("checked"|"table"|"all") = "all"} cleanScope - 清理操作的范围。可选值为 'checked', 'table', 或 'all'。
+     * checked -> 清空选中数据
+     * table -> 清空表格数据
+     * all -> 清空所有数据
+     */
+    cleanComponent(cleanScope = 'all') {
+      switch (cleanScope) {
+        case "checked": {
+          this.checkedMap = new Map();
+          this.checkedMapBackup = new Map();
+          break;
+        }
+        case "table": {
+          this.tableData = [];
+          break;
+        }
+        default:
+        case "all": {
+          this.tableData = [];
+          this.checkedMap = new Map();
+          this.checkedMapBackup = new Map();
+          break;
+        }
+      }
+    },
     initPageSize() {
       if (this.pageSizeList?.length) {
         this.$set(this.listQuery, 'pageSize', this.pageSizeList[0]);
@@ -269,7 +314,7 @@ export default {
     querySubmit({searchParams = {},searchType = ''}) {
       // console.log({searchParams})
       if (searchParams) {
-        this.storeSearchParams = Object(searchParams);
+        this.storeSearchParams = _.cloneDeep(searchParams);
       }
       switch (searchType) {
         case "refresh": {
@@ -293,7 +338,7 @@ export default {
     _queryData(searchParams = this.storeSearchParams) {
 
       if (this.usingLoading && this.isInit) return;
-      const usingRequest = this.$request[this.queryFunc];
+      const usingRequest = this.isQueryFuncString ? this.$request[this.queryFunc] : this.queryFunc;
       if (!usingRequest || (typeof usingRequest !== 'function')) {
         console.warn('invalid request function=', this.queryFunc)
         return;
@@ -321,20 +366,21 @@ export default {
         // console.log('_queryData',searchParams,res)
         if (that.handleRes && (typeof that.handleRes === 'function')) {
           const result = that.handleRes(res)
-          // console.log({result});
+
           const {pageNum: _pageNum, pageSize: _pageSize, total = 0, list = []} = result;
           that.$set(that, 'tableData', list);
           this.listQuery.pageNum = _pageNum || pageNum
           that.listQuery.pageSize = _pageSize || pageSize
           that.total = total
         } else {
-          that.$set(that, 'tableData', res.list || []);
+          that.$set(that, 'tableData', res?.list || res?.data?.list  || []);
+          that.$emit('tableData', res?.list || res?.data?.list  || [])
           that.listQuery.pageNum = pageNum
           that.listQuery.pageSize = pageSize
-          that.total = res.total || 0
+          that.total = res.total || res.data.total  || 0
         }
       }).catch(e => {
-        console.warn(this.queryFunc, e)
+        console.warn(this.isQueryFuncString ? this.queryFunc : this.queryFunc?.name, e)
       }).finally(() => {
         this.isInit = true;
         if (this.selectedList?.length) this.selectedRefill();
@@ -361,8 +407,11 @@ export default {
       // 第一次 {page: 6, limit: 50} 此次值有误，因数据无第6页
       // 第二次 {page: 4, limit: 50} 此次为正确值
       debounceTool(() => {
-        this._tableScrollTop();
-        this._queryData()
+        if (this.filterData && !(_.isEqual(this.storeSearchParams, this.filterData))) {
+          this.querySubmit({searchParams:this.filterData, searchType:'search'});
+        } else {
+          this._queryData()
+        }
       }, 300, 'pageSizeChange')
     },
     selectedRefill() {
@@ -387,6 +436,7 @@ export default {
       selection.forEach(item => {
         const {id} = item;
         const rowId = (rowKey && item[rowKey]) || id;
+
         if (!checkedMap.has(rowId)) {
           checkedMap.set(rowId, {
             ...item,
@@ -546,6 +596,14 @@ export default {
         height: var(--filter-card-short-height, 50px);
         overflow: auto;
         @include scrollBar();
+      }
+      ::v-deep {
+        .el-form-item {
+          margin-bottom: $span4S;
+        }
+        .el-form-item:last-child {
+          margin-bottom: 0;
+        }
       }
     }
   }
